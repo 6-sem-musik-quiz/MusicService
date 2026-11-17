@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\MusicService.Domain\MusicService.Domain.csproj" />
+    <ProjectReference Include="..\MusicService.Repository\MusicService.Repository.csproj" />
+  </ItemGroup>
+</Project>
