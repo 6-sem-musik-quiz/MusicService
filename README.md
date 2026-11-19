@@ -47,6 +47,7 @@ dotnet run --project src/MusicService.Api
 - API: http://localhost:5002
 - Swagger: http://localhost:5002/swagger
 - Health: http://localhost:5002/health
+- Ready (also checks Postgres): http://localhost:5002/health/ready
 - Postgres: `localhost:5442` (postgres / postgres)
 
 ## Database migrations
