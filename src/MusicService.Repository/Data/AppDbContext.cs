@@ -5,7 +5,11 @@ namespace MusicService.Repository.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
-    public DbSet<Example> Examples => Set<Example>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Song> Songs => Set<Song>();
+    public DbSet<Artist> Artists => Set<Artist>();
+    public DbSet<CategorySong> CategorySongs => Set<CategorySong>();
+    public DbSet<SongArtist> SongArtists => Set<SongArtist>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
