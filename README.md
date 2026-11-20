@@ -61,7 +61,35 @@ Without Tailscale: `kubectl -n quiz port-forward svc/postgresql 15432:5432`, the
 - API: http://localhost:5002
 - Swagger: http://localhost:5002/swagger
 - Health: http://localhost:5002/health
-- Ready (also checks Postgres): http://localhost:5002/health/ready
+- Ready (also checks Postgres and blob storage): http://localhost:5002/health/ready
+
+## Blob storage (song files)
+
+The song files live in Garage, an S3-compatible object store in the cluster, with
+Cloudflare CDN in front (`https://media.munkcloud.dk/<key>`). See the gitops repo,
+README "BlobStorage". MusicService talks to it with `AWSSDK.S3`, registered by
+`AddBlobStorage` in `Repository/Extensions/BlobStorageExtensions.cs` as `IAmazonS3`.
+
+Config section `BlobStorage` (in Kubernetes as `BlobStorage__<Name>` env vars):
+
+| Key | In the cluster |
+|---|---|
+| `ServiceUrl` | `http://garage.quiz.svc.cluster.local:3900` |
+| `Bucket` | `media` (everything in it is public through the CDN) |
+| `Region` | `garage` (default) |
+| `AccessKeyId`, `SecretAccessKey` | OpenBao `kv/quiz/blobstorage` |
+
+`/health/ready` lists one object in the bucket to prove the connection and key work.
+Without the config the app still starts; only that check is unhealthy.
+
+Locally, forward the S3 port and set the env vars (the key from OpenBao or the cluster Secret):
+
+```powershell
+kubectl -n quiz port-forward svc/garage 13900:3900
+$env:BlobStorage__ServiceUrl = "http://localhost:13900"
+$env:BlobStorage__AccessKeyId = "<access-key-id>"
+$env:BlobStorage__SecretAccessKey = "<secret-access-key>"
+```
 
 ## Database migrations
 

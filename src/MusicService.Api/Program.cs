@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using MusicService.Api.HealthChecks;
 using MusicService.Api.Middleware;
+using MusicService.Repository.BlobStorage;
 using MusicService.Repository.Data;
 using MusicService.Repository.Extensions;
 using MusicService.Service.Extensions;
@@ -12,13 +14,16 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 // /health is liveness (the process is up); /health/ready also checks
-// that the database answers, so a pod without a DB gets no traffic.
+// that the database and the blob storage answer.
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<AppDbContext>("postgres", tags: ["ready"]);
+    .AddDbContextCheck<AppDbContext>("postgres", tags: ["ready"])
+    .AddCheck<BlobStorageHealthCheck>("blobstorage", tags: ["ready"]);
 
 builder.Services.AddRepositoryLayer(
     builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("Connection string 'Default' is not configured."));
+builder.Services.AddBlobStorage(
+    builder.Configuration.GetSection(BlobStorageOptions.SectionName).Get<BlobStorageOptions>() ?? new BlobStorageOptions());
 builder.Services.AddServiceLayer();
 
 var app = builder.Build();
