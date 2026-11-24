@@ -89,8 +89,34 @@ Through the edge they are `/api/musicservice/...`; the edge strips that prefix.
 | `GET /api/artists?search={text}` | logged in | 200 `[{ id, name }]`, name contains `text` ignoring case, sorted by name, at most 50 |
 | `GET /api/artists/{id}` | logged in | 200 `{ id, name }`; 404 |
 | `POST /api/artists` `{ name }` | admin | 201 + `Location`; 400 (name not 1-200 chars); 409 (name taken, ignoring case) |
+| `POST /api/playlists/{id}/songs` (multipart) | admin | 201 `SongDto`; 400; 404 (playlist). See "Uploading a song" |
 
 Errors are ProblemDetails. LobbyService reads `GET /api/playlists/{id}` when a lobby is created.
+
+`SongDto` is `{ id, title, artists: string[], year, durationSeconds, audioUrl }`; `audioUrl` is the
+public CDN address of the whole mp3, and `artists` are sorted by name.
+
+### Uploading a song
+
+`POST /api/playlists/{id}/songs` takes `multipart/form-data`:
+
+| Field | Rule |
+|---|---|
+| `file` | mp3, content type `audio/mpeg` (or `audio/mp3`). The length is read from the file with TagLibSharp; a file that is not an mp3, or whose length cannot be read, gives 400 |
+| `title` | 1-200 characters |
+| `artistIds` | one or more ids of existing artists (repeat the field). Create artists first with `POST /api/artists`; an unknown id gives 400 and nothing is saved |
+| `year` | 1900 to the current year |
+
+The file is uploaded to `songs/{BlobKey}.mp3` before the song is saved. If saving fails, the file is
+deleted again. MusicService itself has no size limit on this endpoint, but the edge (Kestrel default,
+about 28.6 MiB) and Cloudflare (100 MB on the free plan) still have theirs.
+
+```powershell
+curl.exe -X POST http://localhost:5002/api/playlists/1/songs `
+  -H "Authorization: Bearer $token" `
+  -F "file=@song.mp3;type=audio/mpeg" -F "title=Under Pressure" `
+  -F "artistIds=1" -F "artistIds=2" -F "year=1981"
+```
 
 ## Blob storage (song files)
 
@@ -112,6 +138,33 @@ Config section `BlobStorage` (in Kubernetes as `BlobStorage__<Name>` env vars):
 A song file is stored as `songs/{BlobKey}.mp3` (`BlobStorageOptions.SongObjectKey`), and the browser
 fetches it from `PublicBaseUrl` + `/` + that key (`PublicSongUrl`). `BlobKey` is a Guid, so the URL
 does not give away the answer.
+
+### CORS on the bucket
+
+The frontend fetches the mp3 files from the CDN into memory before a round (SCRUM-112), so the bucket
+must allow `GET`/`HEAD` from the frontend's origin. It is set once on the bucket (not by the app):
+
+```powershell
+kubectl -n quiz port-forward svc/garage 13900:3900
+@'
+{ "CORSRules": [ { "AllowedOrigins": ["https://quiz.munkcloud.dk"],
+                   "AllowedMethods": ["GET", "HEAD"],
+                   "AllowedHeaders": ["*"],
+                   "MaxAgeSeconds": 3600 } ] }
+'@ | Set-Content cors.json
+$env:AWS_ACCESS_KEY_ID = "<access-key-id>"; $env:AWS_SECRET_ACCESS_KEY = "<secret-access-key>"
+aws s3api put-bucket-cors --endpoint-url http://localhost:13900 --region garage --bucket media --cors-configuration file://cors.json
+aws s3api get-bucket-cors --endpoint-url http://localhost:13900 --region garage --bucket media
+```
+
+Check it through the CDN (`Access-Control-Allow-Origin` must be in the response):
+
+```powershell
+curl.exe -I -H "Origin: https://quiz.munkcloud.dk" https://media.munkcloud.dk/songs/<BlobKey>.mp3
+```
+
+Cloudflare caches the first response for a file. If that request had no `Origin` header, the cached
+copy has no CORS header either; purge the file in Cloudflare if the check fails.
 
 `/health/ready` lists one object in the bucket to prove the connection and key work.
 Without the config the app still starts; only that check is unhealthy.

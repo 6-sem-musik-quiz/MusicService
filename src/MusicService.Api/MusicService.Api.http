@@ -55,3 +55,29 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "name": "Queen" }
+
+###
+
+# Admin only. Upload an mp3 (put song.mp3 next to this file).
+POST {{baseUrl}}/api/playlists/1/songs
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="title"
+
+Under Pressure
+--boundary
+Content-Disposition: form-data; name="artistIds"
+
+1
+--boundary
+Content-Disposition: form-data; name="year"
+
+1981
+--boundary
+Content-Disposition: form-data; name="file"; filename="song.mp3"
+Content-Type: audio/mpeg
+
+< ./song.mp3
+--boundary--
