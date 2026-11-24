@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using MusicService.Api.Auth;
 using MusicService.Api.HealthChecks;
 using MusicService.Api.Middleware;
 using MusicService.Repository.BlobStorage;
@@ -18,6 +19,8 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>("postgres", tags: ["ready"])
     .AddCheck<BlobStorageHealthCheck>("blobstorage", tags: ["ready"]);
+
+builder.Services.AddJwtAuthentication();
 
 builder.Services.AddRepositoryLayer(
     builder.Configuration.GetConnectionString("Default")
@@ -41,9 +44,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
-app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });
-app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = c => c.Tags.Contains("ready") });
+app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false }).AllowAnonymous();
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = c => c.Tags.Contains("ready") }).AllowAnonymous();
 
 app.Run();
 
