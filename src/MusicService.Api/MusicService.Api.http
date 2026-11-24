@@ -11,6 +11,33 @@ GET {{baseUrl}}/health/ready
 
 ###
 
-# Every other endpoint needs the token, e.g.:
-# GET {{baseUrl}}/api/playlists
-# Authorization: Bearer {{token}}
+GET {{baseUrl}}/api/playlists
+Authorization: Bearer {{token}}
+
+###
+
+GET {{baseUrl}}/api/playlists/1
+Authorization: Bearer {{token}}
+
+###
+
+# Admin only (token with role = Admin).
+POST {{baseUrl}}/api/playlists
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "80s" }
+
+###
+
+PUT {{baseUrl}}/api/playlists/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Eighties" }
+
+###
+
+# Also deletes the songs that are in no other playlist, and their files.
+DELETE {{baseUrl}}/api/playlists/1
+Authorization: Bearer {{token}}
