@@ -13,7 +13,7 @@ public class GlobalExceptionHandler(
         var (status, title, detail) = exception switch
         {
             MusicValidationException e => (StatusCodes.Status400BadRequest, "Invalid request.", e.Message),
-            PlaylistNotFoundException e => (StatusCodes.Status404NotFound, "Not found.", e.Message),
+            MusicNotFoundException e => (StatusCodes.Status404NotFound, "Not found.", e.Message),
             MusicConflictException e => (StatusCodes.Status409Conflict, "Conflict.", e.Message),
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.", null)
         };

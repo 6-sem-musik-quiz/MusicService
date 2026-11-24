@@ -86,6 +86,9 @@ Through the edge they are `/api/musicservice/...`; the edge strips that prefix.
 | `POST /api/playlists` `{ name }` | admin | 201 + `Location`; 400 (name not 1-60 chars); 409 (name taken, ignoring case) |
 | `PUT /api/playlists/{id}` `{ name }` | admin | 200 `{ id, name, songCount }`; 400; 404; 409 |
 | `DELETE /api/playlists/{id}` | admin | 204; 404. Songs in no other playlist are deleted too, with their files in blob storage; shared songs are kept |
+| `GET /api/artists?search={text}` | logged in | 200 `[{ id, name }]`, name contains `text` ignoring case, sorted by name, at most 50 |
+| `GET /api/artists/{id}` | logged in | 200 `{ id, name }`; 404 |
+| `POST /api/artists` `{ name }` | admin | 201 + `Location`; 400 (name not 1-200 chars); 409 (name taken, ignoring case) |
 
 Errors are ProblemDetails. LobbyService reads `GET /api/playlists/{id}` when a lobby is created.
 

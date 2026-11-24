@@ -41,3 +41,17 @@ Content-Type: application/json
 # Also deletes the songs that are in no other playlist, and their files.
 DELETE {{baseUrl}}/api/playlists/1
 Authorization: Bearer {{token}}
+
+###
+
+GET {{baseUrl}}/api/artists?search=queen
+Authorization: Bearer {{token}}
+
+###
+
+# Admin only.
+POST {{baseUrl}}/api/artists
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Queen" }
