@@ -18,6 +18,12 @@ public class SongRepository(AppDbContext db) : ISongRepository
         return await WithArtists().SingleAsync(s => s.Id == song.Id, ct);
     }
 
+    public async Task<IReadOnlyList<int>> GetIdsInPlaylistAsync(int playlistId, CancellationToken ct = default) =>
+        await db.CategorySongs.Where(cs => cs.CategoryId == playlistId).Select(cs => cs.SongId).ToListAsync(ct);
+
+    public async Task<IReadOnlyList<Song>> GetWithArtistsAsync(IReadOnlyCollection<int> ids, CancellationToken ct = default) =>
+        await WithArtists().Where(s => ids.Contains(s.Id)).ToListAsync(ct);
+
     private IQueryable<Song> WithArtists() =>
         db.Songs.AsNoTracking().Include(s => s.SongArtists).ThenInclude(sa => sa.Artist);
 }

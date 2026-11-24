@@ -11,6 +11,16 @@ namespace MusicService.Api.Controllers;
 [Route("api/playlists/{playlistId:int}/songs")]
 public class PlaylistSongsController(ISongService songs) : ControllerBase
 {
+    // `count` different songs in random order, for GameService to start a game.
+    // Any valid token (a player's or a service token); no admin role needed.
+    [HttpGet("random")]
+    [ProducesResponseType<IReadOnlyList<SongDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyList<SongDto>>> GetRandom(int playlistId, [FromQuery] int count, CancellationToken ct) =>
+        Ok(await songs.GetRandomAsync(playlistId, count, ct));
+
     // multipart/form-data: file (mp3), title, artistIds (repeated field), year.
     // No size limit: a whole album track can be large, and only the admin can call this.
     [HttpPost]

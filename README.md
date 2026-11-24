@@ -90,6 +90,7 @@ Through the edge they are `/api/musicservice/...`; the edge strips that prefix.
 | `GET /api/artists/{id}` | logged in | 200 `{ id, name }`; 404 |
 | `POST /api/artists` `{ name }` | admin | 201 + `Location`; 400 (name not 1-200 chars); 409 (name taken, ignoring case) |
 | `POST /api/playlists/{id}/songs` (multipart) | admin | 201 `SongDto`; 400; 404 (playlist). See "Uploading a song" |
+| `GET /api/playlists/{id}/songs/random?count={n}` | logged in (GameService) | 200 `[SongDto]`: `n` different songs in random order, 1 ≤ n ≤ 100; 400 if `n` is invalid or the playlist has fewer songs (the message says how many); 404 |
 
 Errors are ProblemDetails. LobbyService reads `GET /api/playlists/{id}` when a lobby is created.
 

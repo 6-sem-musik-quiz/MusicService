@@ -21,11 +21,13 @@ public class SongService(
     IAmazonS3 s3,
     BlobStorageOptions blobOptions,
     TimeProvider timeProvider,
+    Random random,
     ILogger<SongService> logger) : ISongService
 {
     public const int MaxTitleLength = 200;
     public const int MinYear = 1900;
     public const string Mp3ContentType = "audio/mpeg";
+    public const int MaxRandomCount = 100;
 
     public async Task<SongDto> UploadAsync(int playlistId, UploadSongRequest request, Stream file, string? contentType,
         CancellationToken ct = default)
@@ -82,6 +84,26 @@ public class SongService(
             await DeleteObjectQuietlyAsync(key);
             throw;
         }
+    }
+
+    public async Task<IReadOnlyList<SongDto>> GetRandomAsync(int playlistId, int count, CancellationToken ct = default)
+    {
+        if (count is < 1 or > MaxRandomCount)
+            throw new MusicValidationException($"count must be between 1 and {MaxRandomCount}.");
+        if (await playlists.GetAsync(playlistId, ct) is null)
+            throw new PlaylistNotFoundException(playlistId);
+
+        var ids = (await songs.GetIdsInPlaylistAsync(playlistId, ct)).ToArray();
+        if (ids.Length < count)
+            throw new MusicValidationException(
+                $"The playlist has {ids.Length} songs, but {count} were requested.");
+
+        // Shuffle all ids and take the first `count`: distinct songs, every order equally likely.
+        random.Shuffle(ids);
+        var picked = ids[..count];
+        var byId = (await songs.GetWithArtistsAsync(picked, ct)).ToDictionary(s => s.Id);
+
+        return picked.Select(id => byId[id].ToDto(blobOptions)).ToList();
     }
 
     private static bool IsMp3ContentType(string? contentType) =>
