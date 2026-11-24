@@ -75,6 +75,20 @@ Admin endpoints add `[Authorize(Policy = AuthPolicies.AdminOnly)]`, which needs 
 Locally, put the key in `.env` as `JWT_SIGNING_KEY` (Docker), or set `$env:Jwt__SigningKey` (IDE).
 Get it with `bao kv get -field=signing-key kv/quiz/jwt`.
 
+## Endpoints
+
+Through the edge they are `/api/musicservice/...`; the edge strips that prefix.
+
+| Endpoint | Who | Result |
+|---|---|---|
+| `GET /api/playlists` | logged in | 200 `[{ id, name, songCount }]`, sorted by name |
+| `GET /api/playlists/{id}` | logged in | 200 `{ id, name, songCount }`; 404 |
+| `POST /api/playlists` `{ name }` | admin | 201 + `Location`; 400 (name not 1-60 chars); 409 (name taken, ignoring case) |
+| `PUT /api/playlists/{id}` `{ name }` | admin | 200 `{ id, name, songCount }`; 400; 404; 409 |
+| `DELETE /api/playlists/{id}` | admin | 204; 404. Songs in no other playlist are deleted too, with their files in blob storage; shared songs are kept |
+
+Errors are ProblemDetails. LobbyService reads `GET /api/playlists/{id}` when a lobby is created.
+
 ## Blob storage (song files)
 
 The song files live in Garage, an S3-compatible object store in the cluster, with

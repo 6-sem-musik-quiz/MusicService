@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using MusicService.Service.Interfaces;
+using MusicService.Service.Services;
 
 namespace MusicService.Service.Extensions;
 
@@ -6,7 +8,7 @@ public static class ServiceLayerExtensions
 {
     public static IServiceCollection AddServiceLayer(this IServiceCollection services)
     {
-        // Register services here, e.g. services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IPlaylistService, PlaylistService>();
 
         return services;
     }
