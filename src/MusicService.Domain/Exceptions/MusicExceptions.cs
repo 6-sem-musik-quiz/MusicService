@@ -14,6 +14,11 @@ public class PlaylistNotFoundException(int playlistId) : MusicNotFoundException(
     public int PlaylistId { get; } = playlistId;
 }
 
+public class SongNotFoundException(int songId) : MusicNotFoundException($"Song {songId} was not found.")
+{
+    public int SongId { get; } = songId;
+}
+
 public class ArtistNotFoundException(int artistId) : MusicNotFoundException($"Artist {artistId} was not found.")
 {
     public int ArtistId { get; } = artistId;

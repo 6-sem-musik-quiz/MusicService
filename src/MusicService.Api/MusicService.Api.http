@@ -81,3 +81,30 @@ Content-Type: audio/mpeg
 
 < ./song.mp3
 --boundary--
+
+###
+
+# Admin only.
+GET {{baseUrl}}/api/playlists/1/songs
+Authorization: Bearer {{token}}
+
+###
+
+# Admin only. Applies in every playlist the song is in.
+PUT {{baseUrl}}/api/songs/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Under Pressure", "artistIds": [1, 2], "year": 1981 }
+
+###
+
+# Admin only. Deletes the song and its file if it is in no other playlist.
+DELETE {{baseUrl}}/api/playlists/1/songs/1
+Authorization: Bearer {{token}}
+
+###
+
+# For GameService (any token).
+GET {{baseUrl}}/api/playlists/1/songs/random?count=6
+Authorization: Bearer {{token}}
