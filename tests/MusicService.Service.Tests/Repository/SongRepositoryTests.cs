@@ -40,4 +40,31 @@ public sealed class SongRepositoryTests : SqliteTestDb
         Assert.Equal([playlistId], song.CategorySongs.Select(cs => cs.CategoryId));
         Assert.Equal(2, song.SongArtists.Count);
     }
+
+    [Fact]
+    public async Task GetIdsInPlaylist_AndGetWithArtists()
+    {
+        var (playlistId, queenId, bowieId) = await Seed();
+        int inPlaylist, alsoInPlaylist;
+        await using (var db = NewDb())
+        {
+            var repository = new SongRepository(db);
+            inPlaylist = (await repository.AddAsync(NewSong(), playlistId, [queenId])).Id;
+            alsoInPlaylist = (await repository.AddAsync(NewSong(), playlistId, [queenId, bowieId])).Id;
+            var other = new Category { Name = "Other" };
+            db.Categories.Add(other);
+            await db.SaveChangesAsync();
+            await repository.AddAsync(NewSong(), other.Id, [bowieId]);
+        }
+
+        await using var read = NewDb();
+        var reader = new SongRepository(read);
+        var ids = await reader.GetIdsInPlaylistAsync(playlistId);
+        var songs = await reader.GetWithArtistsAsync([alsoInPlaylist]);
+
+        Assert.Equal([inPlaylist, alsoInPlaylist], ids.Order());
+        Assert.Equal(["David Bowie", "Queen"], songs.Single().SongArtists.Select(sa => sa.Artist.Name).Order());
+    }
+
+    private static Song NewSong() => new() { Title = "Song", Year = 1985, DurationSeconds = 200, BlobKey = Guid.NewGuid() };
 }

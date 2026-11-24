@@ -28,7 +28,7 @@ public class SongServiceUploadTests
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 11, 24, 12, 0, 0, TimeSpan.Zero));
         _service = new SongService(_songs, _playlists, _artists, _inspector, _s3,
             new BlobStorageOptions { Bucket = "media", PublicBaseUrl = "https://media.munkcloud.dk" },
-            time, NullLogger<SongService>.Instance);
+            time, new Random(1), NullLogger<SongService>.Instance);
 
         _playlists.GetAsync(1, Arg.Any<CancellationToken>()).Returns(new PlaylistDto(1, "80s", 0));
         _artists.GetExistingIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())

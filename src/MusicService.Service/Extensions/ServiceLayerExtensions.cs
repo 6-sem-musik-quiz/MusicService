@@ -13,6 +13,7 @@ public static class ServiceLayerExtensions
         services.AddScoped<ISongService, SongService>();
         services.AddSingleton<IAudioInspector, TagLibAudioInspector>();
         services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(Random.Shared); // thread-safe; tests pass a seeded Random
 
         return services;
     }
