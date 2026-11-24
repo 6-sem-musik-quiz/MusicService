@@ -11,3 +11,6 @@ public record SongDto(
 
 // The text fields of POST /api/playlists/{id}/songs (the file comes separately).
 public record UploadSongRequest(string Title, IReadOnlyList<int> ArtistIds, int Year);
+
+// Body of PUT /api/songs/{id}. Artists are ids, the same as for upload.
+public record UpdateSongRequest(string Title, IReadOnlyList<int> ArtistIds, int Year);

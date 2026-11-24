@@ -70,19 +70,27 @@ public class PlaylistRepository(AppDbContext db) : IPlaylistRepository
 
     public async Task<IReadOnlyList<Guid>?> DeleteAsync(int id, CancellationToken ct = default)
     {
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+
         var category = await db.Categories.SingleOrDefaultAsync(c => c.Id == id, ct);
         if (category is null)
             return null;
 
         // Songs in this playlist and in no other. Shared songs only lose their link (cascade).
         var orphans = await db.Songs
+            .Include(s => s.SongArtists)
             .Where(s => s.CategorySongs.Any(cs => cs.CategoryId == id)
                         && s.CategorySongs.All(cs => cs.CategoryId == id))
             .ToListAsync(ct);
+        var artistIds = orphans.SelectMany(s => s.SongArtists).Select(sa => sa.ArtistId).Distinct().ToList();
 
         db.Songs.RemoveRange(orphans);
         db.Categories.Remove(category);
-        await db.SaveChangesAsync(ct); // one SaveChanges = one transaction
+        await db.SaveChangesAsync(ct);
+
+        // Artists of the deleted songs that have no songs left go too (SCRUM-94).
+        await db.DeleteArtistsWithoutSongsAsync(artistIds, ct);
+        await transaction.CommitAsync(ct);
 
         return orphans.Select(s => s.BlobKey).ToList();
     }

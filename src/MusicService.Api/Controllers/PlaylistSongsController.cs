@@ -21,6 +21,29 @@ public class PlaylistSongsController(ISongService songs) : ControllerBase
     public async Task<ActionResult<IReadOnlyList<SongDto>>> GetRandom(int playlistId, [FromQuery] int count, CancellationToken ct) =>
         Ok(await songs.GetRandomAsync(playlistId, count, ct));
 
+    // All songs in the playlist, sorted by title, with audioUrl so the admin can listen.
+    [HttpGet]
+    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [ProducesResponseType<IReadOnlyList<SongDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyList<SongDto>>> GetAll(int playlistId, CancellationToken ct) =>
+        Ok(await songs.GetInPlaylistAsync(playlistId, ct));
+
+    // Takes the song out of this playlist. If it is in no other playlist, the song and its file are deleted.
+    [HttpDelete("{songId:int}")]
+    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Remove(int playlistId, int songId, CancellationToken ct)
+    {
+        await songs.RemoveFromPlaylistAsync(playlistId, songId, ct);
+        return NoContent();
+    }
+
     // multipart/form-data: file (mp3), title, artistIds (repeated field), year.
     // No size limit: a whole album track can be large, and only the admin can call this.
     [HttpPost]

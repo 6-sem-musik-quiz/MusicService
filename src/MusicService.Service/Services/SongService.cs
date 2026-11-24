@@ -34,19 +34,14 @@ public class SongService(
     {
         var title = ValidTitle(request.Title);
         ValidateYear(request.Year);
-        var artistIds = request.ArtistIds?.Distinct().ToList() ?? [];
-        if (artistIds.Count == 0)
-            throw new MusicValidationException("artistIds must contain at least one artist.");
+        var artistIds = NonEmptyArtistIds(request.ArtistIds);
         if (!IsMp3ContentType(contentType))
             throw new MusicValidationException("file must be an mp3 (audio/mpeg).");
 
         if (await playlists.GetAsync(playlistId, ct) is null)
             throw new PlaylistNotFoundException(playlistId);
 
-        var existing = await artists.GetExistingIdsAsync(artistIds, ct);
-        var unknown = artistIds.Where(id => !existing.Contains(id)).ToList();
-        if (unknown.Count > 0)
-            throw new MusicValidationException($"Unknown artistIds: {string.Join(", ", unknown)}.");
+        await EnsureArtistsExistAsync(artistIds, ct);
 
         if (!file.CanSeek)
             throw new InvalidOperationException("The upload stream must be seekable.");
@@ -106,6 +101,53 @@ public class SongService(
         return picked.Select(id => byId[id].ToDto(blobOptions)).ToList();
     }
 
+    public async Task<IReadOnlyList<SongDto>> GetInPlaylistAsync(int playlistId, CancellationToken ct = default)
+    {
+        if (await playlists.GetAsync(playlistId, ct) is null)
+            throw new PlaylistNotFoundException(playlistId);
+
+        return (await songs.GetInPlaylistAsync(playlistId, ct)).Select(s => s.ToDto(blobOptions)).ToList();
+    }
+
+    public async Task<SongDto> UpdateAsync(int songId, UpdateSongRequest request, CancellationToken ct = default)
+    {
+        var title = ValidTitle(request.Title);
+        ValidateYear(request.Year);
+        var artistIds = NonEmptyArtistIds(request.ArtistIds);
+        await EnsureArtistsExistAsync(artistIds, ct);
+
+        var song = await songs.UpdateAsync(songId, title, request.Year, artistIds, ct)
+                   ?? throw new SongNotFoundException(songId);
+        return song.ToDto(blobOptions);
+    }
+
+    public async Task RemoveFromPlaylistAsync(int playlistId, int songId, CancellationToken ct = default)
+    {
+        var result = await songs.RemoveFromPlaylistAsync(playlistId, songId, ct);
+        if (!result.Found)
+            throw new MusicNotFoundException($"Song {songId} is not in playlist {playlistId}.");
+
+        // The song was in no other playlist, so it is gone; its file is too.
+        if (result.DeletedBlobKey is { } blobKey)
+            await DeleteObjectQuietlyAsync(BlobStorageOptions.SongObjectKey(blobKey));
+    }
+
+    private static List<int> NonEmptyArtistIds(IReadOnlyList<int>? artistIds)
+    {
+        var ids = artistIds?.Distinct().ToList() ?? [];
+        if (ids.Count == 0)
+            throw new MusicValidationException("artistIds must contain at least one artist.");
+        return ids;
+    }
+
+    private async Task EnsureArtistsExistAsync(IReadOnlyCollection<int> artistIds, CancellationToken ct)
+    {
+        var existing = await artists.GetExistingIdsAsync(artistIds, ct);
+        var unknown = artistIds.Where(id => !existing.Contains(id)).ToList();
+        if (unknown.Count > 0)
+            throw new MusicValidationException($"Unknown artistIds: {string.Join(", ", unknown)}.");
+    }
+
     private static bool IsMp3ContentType(string? contentType) =>
         contentType?.Split(';')[0].Trim().ToLowerInvariant() is Mp3ContentType or "audio/mp3";
 
@@ -124,8 +166,9 @@ public class SongService(
             throw new MusicValidationException($"year must be between {MinYear} and {thisYear}.");
     }
 
-    // Used when the database save failed after the upload. Not cancelled with the request,
-    // so a client that gives up does not leave the file behind.
+    // Deletes a file whose song is no longer in the database (a failed save, or a deleted song).
+    // A failure is only logged: nothing points to the file, so it is unreachable, not broken.
+    // Not cancelled with the request, so a client that gives up does not leave the file behind.
     private async Task DeleteObjectQuietlyAsync(string key)
     {
         try
@@ -134,7 +177,7 @@ public class SongService(
         }
         catch (Exception e)
         {
-            logger.LogWarning(e, "Could not delete {Key} from bucket {Bucket} after a failed save", key, blobOptions.Bucket);
+            logger.LogWarning(e, "Could not delete {Key} from bucket {Bucket}", key, blobOptions.Bucket);
         }
     }
 }
