@@ -13,6 +13,7 @@ public static class RepositoryLayerExtensions
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<IPlaylistRepository, PlaylistRepository>();
         services.AddScoped<IArtistRepository, ArtistRepository>();
+        services.AddScoped<ISongRepository, SongRepository>();
 
         return services;
     }

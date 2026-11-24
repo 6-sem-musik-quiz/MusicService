@@ -10,6 +10,9 @@ public static class ServiceLayerExtensions
     {
         services.AddScoped<IPlaylistService, PlaylistService>();
         services.AddScoped<IArtistService, ArtistService>();
+        services.AddScoped<ISongService, SongService>();
+        services.AddSingleton<IAudioInspector, TagLibAudioInspector>();
+        services.AddSingleton(TimeProvider.System);
 
         return services;
     }
