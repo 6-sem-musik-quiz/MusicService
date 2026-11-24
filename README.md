@@ -18,8 +18,6 @@ Api  ──►  Service  ──►  Repository
 | `tests/MusicService.Service.Tests` | Unit tests for services (xUnit + NSubstitute). |
 | `tests/MusicService.Api.Tests` | Integration tests using `WebApplicationFactory`. |
 
-`Example*` files are placeholders showing the pattern end to end. Replace them with real entities.
-
 ### Adding a new feature
 
 1. Entity in `Domain/Entities`, request/response DTOs in `Domain/DTOs`
@@ -63,6 +61,20 @@ Without Tailscale: `kubectl -n quiz port-forward svc/postgresql 15432:5432`, the
 - Health: http://localhost:5002/health
 - Ready (also checks Postgres and blob storage): http://localhost:5002/health/ready
 
+## Authentication
+
+Every endpoint except `/health` and `/health/ready` needs a JWT from UserService
+(`Authorization: Bearer <token>`). MusicService validates it the same way as the other services:
+HS256 with `Jwt:SigningKey`, issuer `slopster-userservice`, audience `slopster`. The key is the one
+UserService signs with, OpenBao `kv/quiz/jwt` (property `signing-key`); in Kubernetes it comes in as
+`Jwt__SigningKey`. Without a key every protected endpoint returns 401.
+
+Admin endpoints add `[Authorize(Policy = AuthPolicies.AdminOnly)]`, which needs the token claim
+`role = Admin`. A logged-in player gets 403 there.
+
+Locally, put the key in `.env` as `JWT_SIGNING_KEY` (Docker), or set `$env:Jwt__SigningKey` (IDE).
+Get it with `bao kv get -field=signing-key kv/quiz/jwt`.
+
 ## Blob storage (song files)
 
 The song files live in Garage, an S3-compatible object store in the cluster, with
@@ -78,6 +90,11 @@ Config section `BlobStorage` (in Kubernetes as `BlobStorage__<Name>` env vars):
 | `Bucket` | `media` (everything in it is public through the CDN) |
 | `Region` | `garage` (default) |
 | `AccessKeyId`, `SecretAccessKey` | OpenBao `kv/quiz/blobstorage` |
+| `PublicBaseUrl` | `https://media.munkcloud.dk` (the CDN) |
+
+A song file is stored as `songs/{BlobKey}.mp3` (`BlobStorageOptions.SongObjectKey`), and the browser
+fetches it from `PublicBaseUrl` + `/` + that key (`PublicSongUrl`). `BlobKey` is a Guid, so the URL
+does not give away the answer.
 
 `/health/ready` lists one object in the bucket to prove the connection and key work.
 Without the config the app still starts; only that check is unhealthy.

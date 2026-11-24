@@ -1,22 +1,16 @@
 @baseUrl = http://localhost:5002
+# A token from UserService: POST http://localhost:5001/api/users/login, copy "token".
+@token = paste-a-token-here
 
 GET {{baseUrl}}/health
 
 ###
 
-# 200 when the database answers, 503 when it does not.
+# 200 when the database and blob storage answer, 503 when they do not.
 GET {{baseUrl}}/health/ready
 
 ###
 
-GET {{baseUrl}}/api/example
-
-###
-
-POST {{baseUrl}}/api/example
-Content-Type: application/json
-
-{
-  "name": "Test",
-  "description": "Created from the .http file"
-}
+# Every other endpoint needs the token, e.g.:
+# GET {{baseUrl}}/api/playlists
+# Authorization: Bearer {{token}}

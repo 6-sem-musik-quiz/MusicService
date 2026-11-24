@@ -3,11 +3,11 @@
 #
 # One-time setup (see README, "Running locally"):
 #   copy .env.example to .env   (.env is in .gitignore, never commit it)
-#   put the musicservice DB password in .env
+#   put the musicservice DB password and the JWT signing key in .env
 #
 #   docker compose up --build
 #
-# Compose stops with an error if DB_PASSWORD is missing or empty.
+# Compose stops with an error if DB_PASSWORD or JWT_SIGNING_KEY is missing or empty.
 services:
   api:
     build: .
@@ -19,5 +19,8 @@ services:
       # Never run migrations against the shared database from a local branch.
       # Schema changes reach the real database only through a deploy from main.
       Database__MigrateOnStartup: "false"
+      # The key UserService signs tokens with, so tokens from it are accepted here.
+      Jwt__SigningKey: "${JWT_SIGNING_KEY:?JWT_SIGNING_KEY is not set. Copy .env.example to .env and fill it in from OpenBao (see README)}"
+      BlobStorage__PublicBaseUrl: https://media.munkcloud.dk
     extra_hosts:
       - "host.docker.internal:host-gateway"

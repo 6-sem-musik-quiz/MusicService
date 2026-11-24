@@ -19,6 +19,15 @@ public sealed class BlobStorageOptions
 
     public string SecretAccessKey { get; set; } = "";
 
+    // Public address of the bucket (Cloudflare CDN in front of Garage), e.g. https://media.munkcloud.dk.
+    public string PublicBaseUrl { get; set; } = "";
+
+    // Object key of a song file. The BlobKey is a Guid, so the key does not give away the answer.
+    public static string SongObjectKey(Guid blobKey) => $"songs/{blobKey}.mp3";
+
+    // URL the browser fetches a song file from: PublicBaseUrl + "/" + object key.
+    public string PublicSongUrl(Guid blobKey) => $"{PublicBaseUrl.TrimEnd('/')}/{SongObjectKey(blobKey)}";
+
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(ServiceUrl)
         && !string.IsNullOrWhiteSpace(AccessKeyId)
