@@ -8,6 +8,8 @@ using MusicService.Repository.BlobStorage;
 using MusicService.Repository.Interfaces;
 using MusicService.Service.Interfaces;
 
+using MusicService.Service.Metrics;
+
 namespace MusicService.Service.Services;
 
 // Song rules: title 1-200 characters, year 1900 to this year, one or more existing artists,
@@ -22,7 +24,8 @@ public class SongService(
     BlobStorageOptions blobOptions,
     TimeProvider timeProvider,
     Random random,
-    ILogger<SongService> logger) : ISongService
+    ILogger<SongService> logger,
+    MusicMetrics? metrics = null) : ISongService // SCRUM-173; null in tests that do not look
 {
     public const int MaxTitleLength = 200;
     public const int MinYear = 1900;
@@ -58,16 +61,24 @@ public class SongService(
         };
         var key = BlobStorageOptions.SongObjectKey(song.BlobKey);
 
-        await s3.PutObjectAsync(new PutObjectRequest
+        try
         {
-            BucketName = blobOptions.Bucket,
-            Key = key,
-            InputStream = file,
-            AutoCloseStream = false,
-            ContentType = Mp3ContentType,
-            // The key is a new Guid for every file, so the CDN and browsers may cache it forever.
-            Headers = { CacheControl = "public, max-age=31536000, immutable" }
-        }, ct);
+            await s3.PutObjectAsync(new PutObjectRequest
+            {
+                BucketName = blobOptions.Bucket,
+                Key = key,
+                InputStream = file,
+                AutoCloseStream = false,
+                ContentType = Mp3ContentType,
+                // The key is a new Guid for every file, so the CDN and browsers may cache it forever.
+                Headers = { CacheControl = "public, max-age=31536000, immutable" }
+            }, ct);
+        }
+        catch (Exception) when (!ct.IsCancellationRequested)
+        {
+            metrics?.BlobError("upload");
+            throw;
+        }
 
         try
         {
@@ -97,6 +108,7 @@ public class SongService(
         random.Shuffle(ids);
         var picked = ids[..count];
         var byId = (await songs.GetWithArtistsAsync(picked, ct)).ToDictionary(s => s.Id);
+        metrics?.SongDraw(playlistId);
 
         return picked.Select(id => byId[id].ToDto(blobOptions)).ToList();
     }
@@ -177,6 +189,7 @@ public class SongService(
         }
         catch (Exception e)
         {
+            metrics?.BlobError("delete");
             logger.LogWarning(e, "Could not delete {Key} from bucket {Bucket}", key, blobOptions.Bucket);
         }
     }
