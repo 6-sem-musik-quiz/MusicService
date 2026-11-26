@@ -11,6 +11,7 @@ public static class ServiceLayerExtensions
         services.AddScoped<IPlaylistService, PlaylistService>();
         services.AddScoped<IArtistService, ArtistService>();
         services.AddScoped<ISongService, SongService>();
+        services.AddSingleton<Metrics.MusicMetrics>(); // SCRUM-173
         services.AddSingleton<IAudioInspector, TagLibAudioInspector>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(Random.Shared); // thread-safe; tests pass a seeded Random

@@ -6,6 +6,11 @@ using MusicService.Repository.BlobStorage;
 using MusicService.Repository.Data;
 using MusicService.Repository.Extensions;
 using MusicService.Service.Extensions;
+using MusicService.Service.Metrics;
+using OpenTelemetry;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +33,25 @@ builder.Services.AddRepositoryLayer(
 builder.Services.AddBlobStorage(
     builder.Configuration.GetSection(BlobStorageOptions.SectionName).Get<BlobStorageOptions>() ?? new BlobStorageOptions());
 builder.Services.AddServiceLayer();
+
+// SCRUM-173: traces, metrics and logs over OTLP. The collector address comes from
+// OTEL_EXPORTER_OTLP_ENDPOINT (default http://localhost:4317) and the service name from OTEL_SERVICE_NAME
+// (both set by the gitops chart). Logs carry the trace id, so Grafana links a log line to its trace.
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation(o => o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health"))
+        .AddSource("System.Net.Http") // calls to blob storage (S3 API)
+        .AddSource("Npgsql"))           // the SQL each request runs
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation() // http.server.request.duration
+        .AddMeter("System.Net.Http", "System.Runtime", "Npgsql")
+        .AddMeter(MusicMetrics.MeterName))
+    .WithLogging(logging => { }, options =>
+    {
+        options.IncludeFormattedMessage = true;
+        options.IncludeScopes = true;
+    })
+    .UseOtlpExporter();
 
 var app = builder.Build();
 

@@ -207,6 +207,20 @@ and the deploy applies them.
 dotnet test
 ```
 
+## Observability (SCRUM-173)
+
+Traces, metrics and logs go over OTLP (`UseOtlpExporter`; `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_SERVICE_NAME`
+come from the gitops chart). Traces: HTTP requests (not `/health`), outgoing HTTP (including blob storage over the
+S3 API) and the SQL Npgsql runs. Metrics: request duration, runtime, HttpClient, Npgsql and the meter
+`Slopster.Music`:
+
+| Metric | Labels | Meaning |
+|---|---|---|
+| `slopster_song_draws_total` | `playlist_id` | One per random draw of songs for a game |
+| `slopster_blob_errors_total` | `operation=upload\|delete` | Failed calls to blob storage |
+
+Logs carry the trace id, so Grafana links a log line to its trace.
+
 ## Service ports
 
 | Service | API |
